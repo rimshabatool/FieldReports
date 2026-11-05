@@ -2,12 +2,15 @@ import { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useHeaderHeight } from '@react-navigation/elements';
 
 import { PrimaryButton, SecondaryButton } from '../components/Buttons';
 import { FieldInput } from '../components/FieldInput';
@@ -23,6 +26,7 @@ type Props = NativeStackScreenProps<PhoneStackParamList, 'Compose'>;
 const MAX_PHOTOS = 5;
 
 export function ComposeScreen({ navigation }: Props) {
+  const headerHeight = useHeaderHeight();
   const [description, setDescription] = useState('');
   const [photos, setPhotos] = useState<PhotoTile[]>([]);
   const [showErrors, setShowErrors] = useState(false);
@@ -108,71 +112,83 @@ export function ComposeScreen({ navigation }: Props) {
   }
 
   return (
-    <ScrollView
-      contentContainerStyle={styles.content}
-      keyboardShouldPersistTaps="handled"
-    >
-      <FieldInput
-        label="Description"
-        value={description}
-        onChangeText={setDescription}
-        placeholder="What did you see?"
-        multiline
-        error={
-          showErrors && descriptionMissing
-            ? 'A description is required.'
-            : undefined
-        }
-      />
-      <View style={styles.photos}>
-        <View style={styles.photosHeader}>
-          <Text style={styles.label}>Photos</Text>
+    <KeyboardAvoidingView
+      style={styles.fill}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={headerHeight}>
+      <ScrollView
+        style={styles.fill}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        automaticallyAdjustKeyboardInsets
+        nestedScrollEnabled>
+        <FieldInput
+          label="Description"
+          value={description}
+          onChangeText={setDescription}
+          placeholder="What did you see?"
+          multiline
+          error={
+            showErrors && descriptionMissing
+              ? 'A description is required.'
+              : undefined
+          }
+        />
+        <View style={styles.photos}>
+          <View style={styles.photosHeader}>
+            <Text style={styles.label}>Photos</Text>
+            {photos.length > 0 ? (
+              <Text style={styles.count}>
+                {photos.length}/{MAX_PHOTOS}
+              </Text>
+            ) : null}
+          </View>
+          <SecondaryButton
+            label="Add photo"
+            disabled={atLimit || busy}
+            onPress={addPhotos}
+          />
+          {compressing ? (
+            <View style={styles.compressing} accessibilityLiveRegion="polite">
+              <ActivityIndicator color={colors.button} />
+              <Text style={styles.compressingText}>Image is compressing…</Text>
+            </View>
+          ) : null}
+          {atLimit ? (
+            <Text style={styles.help}>5 photos is the maximum.</Text>
+          ) : null}
+          {showErrors && photosMissing ? (
+            <Text style={styles.error}>Add at least one photo.</Text>
+          ) : null}
           {photos.length > 0 ? (
-            <Text style={styles.count}>
-              {photos.length}/{MAX_PHOTOS}
-            </Text>
+            <PhotoTiles
+              photos={photos}
+              onRemove={id =>
+                setPhotos(current => current.filter(photo => photo.id !== id))
+              }
+            />
           ) : null}
         </View>
-        <SecondaryButton
-          label="Add photo"
-          disabled={atLimit || busy}
-          onPress={addPhotos}
+        <PrimaryButton
+          label={saving ? 'Saving…' : 'Save on this phone'}
+          disabled={busy}
+          onPress={saveOnPhone}
         />
-        {compressing ? (
-          <View style={styles.compressing} accessibilityLiveRegion="polite">
-            <ActivityIndicator color={colors.button} />
-            <Text style={styles.compressingText}>Image is compressing…</Text>
-          </View>
-        ) : null}
-        {atLimit ? (
-          <Text style={styles.help}>5 photos is the maximum.</Text>
-        ) : null}
-        {showErrors && photosMissing ? (
-          <Text style={styles.error}>Add at least one photo.</Text>
-        ) : null}
-        {photos.length > 0 ? (
-          <PhotoTiles
-            photos={photos}
-            onRemove={id =>
-              setPhotos(current => current.filter(photo => photo.id !== id))
-            }
-          />
-        ) : null}
-      </View>
-      <PrimaryButton
-        label={saving ? 'Saving…' : 'Save on this phone'}
-        disabled={busy}
-        onPress={saveOnPhone}
-      />
-    </ScrollView>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  fill: {
+    flex: 1,
+  },
   content: {
+    flexGrow: 1,
     padding: spacing.screen,
     gap: scale.s(22),
-    paddingBottom: scale.vs(32),
+    paddingBottom: scale.vs(48),
   },
   photos: {
     gap: scale.s(10),
