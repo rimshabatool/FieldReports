@@ -1,6 +1,6 @@
-import { Pressable, StyleSheet, Text } from 'react-native';
+import {Pressable, StyleSheet, Text} from 'react-native';
 
-import { colors } from '../theme';
+import {colors, hitSlop, radii, scale, typography} from '../theme';
 
 type ButtonProps = {
   label: string;
@@ -8,14 +8,17 @@ type ButtonProps = {
   disabled?: boolean;
 };
 
-export function PrimaryButton({ label, onPress, disabled }: ButtonProps) {
+const NO_RIPPLE = {color: 'transparent'} as const;
+
+export function PrimaryButton({label, onPress, disabled}: ButtonProps) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{ disabled: !!disabled }}
+      accessibilityState={{disabled: !!disabled}}
       disabled={disabled}
+      android_ripple={NO_RIPPLE}
       onPress={onPress}
-      style={({ pressed }) => [
+      style={({pressed}) => [
         styles.primary,
         pressed && !disabled && styles.pressed,
         disabled && styles.disabled,
@@ -25,14 +28,15 @@ export function PrimaryButton({ label, onPress, disabled }: ButtonProps) {
   );
 }
 
-export function SecondaryButton({ label, onPress, disabled }: ButtonProps) {
+export function SecondaryButton({label, onPress, disabled}: ButtonProps) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{ disabled: !!disabled }}
+      accessibilityState={{disabled: !!disabled}}
       disabled={disabled}
+      android_ripple={NO_RIPPLE}
       onPress={onPress}
-      style={({ pressed }) => [
+      style={({pressed}) => [
         styles.secondary,
         pressed && !disabled && styles.pressed,
         disabled && styles.disabled,
@@ -44,14 +48,15 @@ export function SecondaryButton({ label, onPress, disabled }: ButtonProps) {
   );
 }
 
-export function TextButton({ label, onPress, disabled }: ButtonProps) {
+export function TextButton({label, onPress, disabled}: ButtonProps) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{ disabled: !!disabled }}
+      accessibilityState={{disabled: !!disabled}}
       disabled={disabled}
+      android_ripple={NO_RIPPLE}
       onPress={onPress}
-      style={({ pressed }) => [
+      style={({pressed}) => [
         styles.textHit,
         pressed && !disabled && styles.pressed,
         disabled && styles.disabled,
@@ -65,42 +70,42 @@ export function TextButton({ label, onPress, disabled }: ButtonProps) {
 
 const styles = StyleSheet.create({
   primary: {
-    minHeight: 52,
-    borderRadius: 18,
+    minHeight: hitSlop.button,
+    borderRadius: radii.md,
     backgroundColor: colors.button,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 16,
+    paddingHorizontal: scale.s(14),
   },
   primaryLabel: {
     color: colors.buttonText,
-    fontSize: 17,
+    fontSize: typography.button,
     fontWeight: '600',
   },
   secondary: {
-    minHeight: 52,
-    borderRadius: 18,
+    minHeight: hitSlop.button,
+    borderRadius: radii.md,
     borderWidth: 1,
     borderColor: colors.line,
     backgroundColor: colors.card,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 12,
+    paddingHorizontal: scale.s(10),
   },
   secondaryLabel: {
     color: colors.text,
-    fontSize: 16,
+    fontSize: typography.button,
     fontWeight: '600',
   },
   textHit: {
-    minHeight: 48,
+    minHeight: hitSlop.text,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 12,
+    paddingHorizontal: scale.s(8),
   },
   textLabel: {
     color: colors.danger,
-    fontSize: 16,
+    fontSize: typography.caption,
     fontWeight: '600',
   },
   pressed: {

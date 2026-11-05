@@ -1,6 +1,6 @@
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import {StyleSheet, Text, TextInput, View} from 'react-native';
 
-import { colors } from '../theme';
+import {colors, hitSlop, radii, scale, typography} from '../theme';
 
 type Props = {
   label: string;
@@ -48,36 +48,36 @@ export function FieldInput({
 
 const styles = StyleSheet.create({
   wrap: {
-    gap: 8,
+    gap: scale.s(8),
   },
   label: {
     color: colors.text,
-    fontSize: 15,
+    fontSize: typography.label,
     fontWeight: '600',
   },
   input: {
-    minHeight: 52,
-    borderRadius: 18,
+    minHeight: hitSlop.button,
+    borderRadius: radii.md,
     borderWidth: 1,
     borderColor: colors.line,
     backgroundColor: colors.card,
     color: colors.text,
-    fontSize: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    fontSize: typography.body,
+    paddingHorizontal: scale.s(14),
+    paddingVertical: scale.vs(12),
   },
   multiline: {
-    minHeight: 120,
+    minHeight: scale.vs(120),
     textAlignVertical: 'top',
   },
   help: {
     color: colors.muted,
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: typography.caption,
+    lineHeight: scale.vs(18),
   },
   error: {
     color: colors.danger,
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: typography.meta,
+    lineHeight: scale.vs(20),
   },
 });

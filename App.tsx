@@ -11,10 +11,8 @@ export default function App() {
     let stopUploader: (() => void) | undefined;
 
     hydrateQueue()
-      .then(() => {
-        stopUploader = startUploader();
-      })
-      .catch(() => {
+      .catch(() => {})
+      .finally(() => {
         stopUploader = startUploader();
       });
 

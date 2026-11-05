@@ -1,7 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import {Pressable, StyleSheet, Text, View} from 'react-native';
 
-import { colors } from '../theme';
-import { StatusPill, StatusTone } from './StatusPill';
+import {colors, radii, scale, spacing, typography} from '../theme';
+import {StatusPill, StatusTone, statusAccent} from './StatusPill';
 
 type Props = {
   description: string;
@@ -20,9 +20,12 @@ export function ReportCard({
   statusTone,
   onPress,
 }: Props) {
+  const accent = statusAccent(statusTone);
   const body = (
-    <View style={styles.card}>
-      <Text style={styles.description}>{description}</Text>
+    <View style={[styles.card, {borderLeftColor: accent}]}>
+      <Text style={styles.description} numberOfLines={3}>
+        {description}
+      </Text>
       <Text style={styles.meta}>{meta}</Text>
       {statusLabel && statusTone ? (
         <StatusPill label={statusLabel} tone={statusTone} />
@@ -38,8 +41,9 @@ export function ReportCard({
   return (
     <Pressable
       accessibilityRole="button"
+      android_ripple={{color: 'transparent'}}
       onPress={onPress}
-      style={({ pressed }) => pressed && styles.pressed}>
+      style={({pressed}) => pressed && styles.pressed}>
       {body}
     </Pressable>
   );
@@ -48,30 +52,33 @@ export function ReportCard({
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.card,
-    borderRadius: 28,
-    padding: 18,
-    gap: 10,
-    shadowColor: '#6C5CE7',
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 3,
+    borderRadius: radii.lg,
+    borderLeftWidth: scale.s(4),
+    paddingVertical: spacing.card,
+    paddingRight: spacing.card,
+    paddingLeft: scale.s(12),
+    gap: scale.s(6),
+    shadowColor: '#1E1B2E',
+    shadowOpacity: 0.06,
+    shadowRadius: scale.s(8),
+    shadowOffset: {width: 0, height: scale.vs(3)},
+    elevation: 2,
   },
   description: {
     color: colors.text,
-    fontSize: 18,
+    fontSize: typography.cardTitle,
     fontWeight: '700',
-    lineHeight: 24,
+    lineHeight: scale.vs(18),
   },
   meta: {
     color: colors.muted,
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: typography.meta,
+    lineHeight: scale.vs(16),
   },
   note: {
     color: colors.muted,
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: typography.meta,
+    lineHeight: scale.vs(16),
   },
   pressed: {
     opacity: 0.7,

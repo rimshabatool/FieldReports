@@ -13,7 +13,6 @@ import {
 } from './types';
 
 function requestUpload(): void {
-  // Lazy import avoids a cycle with uploader.ts at module load.
   const { kickUploader } = require('./uploader') as typeof import('./uploader');
   kickUploader().catch(() => {});
 }
@@ -48,7 +47,6 @@ export function getReports(): QueuedReport[] {
   return reports.slice();
 }
 
-/** Read the queue from disk. Safe to call on every cold start. */
 export async function hydrateQueue(): Promise<QueuedReport[]> {
   reports = await loadQueue();
   hydrated = true;
@@ -120,6 +118,7 @@ export async function updateReportStatus(
   await saveQueue(reports);
   emit();
 }
+
 export async function removeReport(clientId: string): Promise<void> {
   await ensureHydrated();
   const exists = reports.some(report => report.clientId === clientId);
@@ -136,34 +135,27 @@ export async function setReportsWaitingForSignal(): Promise<void> {
   await ensureHydrated();
   let changed = false;
   reports = reports.map(report => {
-    if (
-      report.status === 'saved' ||
-      report.status === 'uploading' ||
-      report.status === 'waiting'
-    ) {
-      if (report.status !== 'waiting' || report.note !== undefined) {
-        changed = true;
-        return {
-          ...report,
-          status: 'waiting' as const,
-          note: undefined,
-        };
-      }
+    if (report.status === 'failed') {
+      return report;
     }
-    return report;
+    if (report.status === 'waiting' && report.note == null) {
+      return report;
+    }
+    changed = true;
+    return {...report, status: 'waiting' as const, note: undefined};
   });
-  if (changed) {
-    await saveQueue(reports);
-    emit();
+  if (!changed) {
+    return;
   }
+  await saveQueue(reports);
+  emit();
 }
 
 export async function clearLocalQueue(): Promise<void> {
   requestAbortUpload();
   await ensureHydrated();
-  const snapshot = reports.slice();
   reports = [];
   emit();
-  await clearAllStoredReports(snapshot);
+  await clearAllStoredReports();
   emit();
 }

@@ -1,13 +1,13 @@
-import { StyleSheet, Text, View } from 'react-native';
+import {StyleSheet, Text, View} from 'react-native';
 
-import { colors } from '../theme';
+import {colors, scale, typography} from '../theme';
 
 type Props = {
   title: string;
   subtitle?: string;
 };
 
-export function ScreenHeader({ title, subtitle }: Props) {
+export function ScreenHeader({title, subtitle}: Props) {
   return (
     <View style={styles.wrap}>
       <Text style={styles.title}>{title}</Text>
@@ -18,18 +18,18 @@ export function ScreenHeader({ title, subtitle }: Props) {
 
 const styles = StyleSheet.create({
   wrap: {
-    gap: 6,
+    gap: scale.s(4),
   },
   title: {
     color: colors.text,
-    fontSize: 36,
+    fontSize: typography.hero,
     fontWeight: '700',
-    letterSpacing: -0.4,
+    letterSpacing: -0.3,
   },
   subtitle: {
     color: colors.muted,
-    fontSize: 16,
-    lineHeight: 22,
+    fontSize: typography.body,
+    lineHeight: scale.vs(18),
     letterSpacing: 0.1,
   },
 });

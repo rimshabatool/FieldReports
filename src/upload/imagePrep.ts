@@ -1,6 +1,5 @@
 import { getFileSize, getImageMetaData, Image } from 'react-native-compressor';
 
-/** Hard ceiling from the assessment: destination rejects over 5 MB. */
 export const MAX_PHOTO_BYTES = 5 * 1024 * 1024;
 
 type CompressStep = {
@@ -8,7 +7,6 @@ type CompressStep = {
   quality: number;
 };
 
-/** Drop width and quality until the file is under the ceiling. */
 const COMPRESS_STEPS: CompressStep[] = [
   { maxWidth: 2048, quality: 0.82 },
   { maxWidth: 1600, quality: 0.72 },
@@ -31,7 +29,6 @@ async function bytesForUri(uri: string): Promise<number> {
       return parsed;
     }
   } catch {
-    // Fall through to image metadata.
   }
 
   const meta = await getImageMetaData(uri);
@@ -52,7 +49,6 @@ export async function preparePhotoUnderLimit(
     return { uri: currentUri, bytes };
   }
 
-  // WhatsApp-style pass first; often enough for large camera originals.
   currentUri = await Image.compress(uri, {
     compressionMethod: 'auto',
     output: 'jpg',
@@ -87,3 +83,4 @@ export async function preparePhotosUnderLimit(
   }
   return prepared;
 }
+

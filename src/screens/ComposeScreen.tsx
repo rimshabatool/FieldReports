@@ -1,4 +1,4 @@
-import {useState} from 'react';
+import { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -7,22 +7,22 @@ import {
   Text,
   View,
 } from 'react-native';
-import {NativeStackScreenProps} from '@react-navigation/native-stack';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
 
-import {PrimaryButton, SecondaryButton} from '../components/Buttons';
-import {FieldInput} from '../components/FieldInput';
-import {PhotoTile, PhotoTiles} from '../components/PhotoTiles';
-import {PhoneStackParamList} from '../navigation/types';
-import {pickPhotos} from '../photos/pickMedia';
-import {colors, spacing} from '../theme';
-import {preparePhotosUnderLimit} from '../upload/imagePrep';
-import {addReport} from '../upload/queue';
+import { PrimaryButton, SecondaryButton } from '../components/Buttons';
+import { FieldInput } from '../components/FieldInput';
+import { PhotoTile, PhotoTiles } from '../components/PhotoTiles';
+import { PhoneStackParamList } from '../navigation/types';
+import { pickPhotos } from '../photos/pickMedia';
+import { colors, scale, spacing, typography } from '../theme';
+import { preparePhotosUnderLimit } from '../upload/imagePrep';
+import { addReport } from '../upload/queue';
 
 type Props = NativeStackScreenProps<PhoneStackParamList, 'Compose'>;
 
 const MAX_PHOTOS = 5;
 
-export function ComposeScreen({navigation}: Props) {
+export function ComposeScreen({ navigation }: Props) {
   const [description, setDescription] = useState('');
   const [photos, setPhotos] = useState<PhotoTile[]>([]);
   const [showErrors, setShowErrors] = useState(false);
@@ -47,23 +47,20 @@ export function ComposeScreen({navigation}: Props) {
         return;
       }
 
-      const room = MAX_PHOTOS - photos.length;
-      const selected = result.photos.slice(0, room);
-
       setPicking(false);
       setCompressing(true);
 
       const prepared = await preparePhotosUnderLimit(
-        selected.map(photo => photo.uri),
+        result.photos.map(photo => photo.uri),
       );
 
       setPhotos(current => {
-        const stillRoom = MAX_PHOTOS - current.length;
-        if (stillRoom <= 0) {
+        const room = MAX_PHOTOS - current.length;
+        if (room <= 0) {
           return current;
         }
 
-        const additions = prepared.slice(0, stillRoom).map((photo, index) => ({
+        const additions = prepared.slice(0, room).map((photo, index) => ({
           id: `${result.source}-${Date.now()}-${index}`,
           source: result.source,
           uri: photo.uri,
@@ -93,12 +90,9 @@ export function ComposeScreen({navigation}: Props) {
     try {
       await addReport({
         description,
-        photos: photos
-          .filter(photo => Boolean(photo.uri))
-          .map(photo => ({
-            uri: photo.uri as string,
-            source: photo.source,
-          })),
+        photos: photos.flatMap(photo =>
+          photo.uri ? [{uri: photo.uri, source: photo.source}] : [],
+        ),
       });
       navigation.goBack();
     } catch (error) {
@@ -116,7 +110,8 @@ export function ComposeScreen({navigation}: Props) {
   return (
     <ScrollView
       contentContainerStyle={styles.content}
-      keyboardShouldPersistTaps="handled">
+      keyboardShouldPersistTaps="handled"
+    >
       <FieldInput
         label="Description"
         value={description}
@@ -130,11 +125,14 @@ export function ComposeScreen({navigation}: Props) {
         }
       />
       <View style={styles.photos}>
-        <Text style={styles.label}>Photos</Text>
-        <Text style={styles.help}>
-          {photos.length} of {MAX_PHOTOS}. Each photo is shrunk under 5 MB on
-          this phone.
-        </Text>
+        <View style={styles.photosHeader}>
+          <Text style={styles.label}>Photos</Text>
+          {photos.length > 0 ? (
+            <Text style={styles.count}>
+              {photos.length}/{MAX_PHOTOS}
+            </Text>
+          ) : null}
+        </View>
         <SecondaryButton
           label="Add photo"
           disabled={atLimit || busy}
@@ -173,37 +171,46 @@ export function ComposeScreen({navigation}: Props) {
 const styles = StyleSheet.create({
   content: {
     padding: spacing.screen,
-    gap: 22,
-    paddingBottom: 32,
+    gap: scale.s(22),
+    paddingBottom: scale.vs(32),
   },
   photos: {
-    gap: 10,
+    gap: scale.s(10),
+  },
+  photosHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   label: {
     color: colors.text,
-    fontSize: 15,
+    fontSize: typography.label,
+    fontWeight: '600',
+  },
+  count: {
+    color: colors.muted,
+    fontSize: typography.meta,
     fontWeight: '600',
   },
   help: {
     color: colors.muted,
-    fontSize: 13,
-    lineHeight: 18,
+    fontSize: typography.caption,
+    lineHeight: scale.vs(18),
   },
   error: {
     color: colors.danger,
-    fontSize: 14,
-    lineHeight: 20,
+    fontSize: typography.meta,
+    lineHeight: scale.vs(20),
   },
   compressing: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    paddingVertical: 8,
+    gap: scale.s(10),
+    paddingVertical: scale.vs(8),
   },
   compressingText: {
     color: colors.text,
-    fontSize: 14,
+    fontSize: typography.meta,
     fontWeight: '600',
   },
 });
-

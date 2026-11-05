@@ -1,18 +1,31 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import { colors } from '../theme';
+import { colors, radii, scale, typography } from '../theme';
 
 export type StatusTone = 'saved' | 'waiting' | 'uploading' | 'failed';
 
 const tones = {
-  saved: { background: colors.savedBackground, text: colors.savedText },
-  waiting: { background: colors.waitingBackground, text: colors.waitingText },
+  saved: {
+    background: colors.savedBackground,
+    text: colors.savedText,
+  },
+  waiting: {
+    background: colors.waitingBackground,
+    text: colors.waitingText,
+  },
   uploading: {
     background: colors.uploadingBackground,
     text: colors.uploadingText,
   },
-  failed: { background: colors.failedBackground, text: colors.failedText },
+  failed: {
+    background: colors.failedBackground,
+    text: colors.failedText,
+  },
 };
+
+export function statusAccent(tone?: StatusTone): string {
+  return tone ? tones[tone].text : colors.button;
+}
 
 type Props = {
   label: string;
@@ -32,12 +45,12 @@ export function StatusPill({ label, tone }: Props) {
 const styles = StyleSheet.create({
   pill: {
     alignSelf: 'flex-start',
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+    borderRadius: radii.pill,
+    paddingHorizontal: scale.s(20),
+    paddingVertical: scale.vs(5),
   },
   label: {
-    fontSize: 13,
+    fontSize: typography.caption,
     fontWeight: '700',
   },
 });

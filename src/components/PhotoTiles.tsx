@@ -1,15 +1,8 @@
-import {useState} from 'react';
-import {
-  Image,
-  Modal,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import { useState } from 'react';
+import { Image, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import {colors} from '../theme';
+import { colors, hitSlop, radii, scale, typography } from '../theme';
 
 export type PhotoTile = {
   id: string;
@@ -22,7 +15,7 @@ type Props = {
   onRemove?: (id: string) => void;
 };
 
-export function PhotoTiles({photos, onRemove}: Props) {
+export function PhotoTiles({ photos, onRemove }: Props) {
   const insets = useSafeAreaInsets();
   const [fullUri, setFullUri] = useState<string | null>(null);
 
@@ -38,8 +31,9 @@ export function PhotoTiles({photos, onRemove}: Props) {
                   accessibilityRole="imagebutton"
                   accessibilityLabel={`View photo ${index + 1} full screen`}
                   onPress={() => setFullUri(photo.uri ?? null)}
-                  style={StyleSheet.absoluteFill}>
-                  <Image source={{uri: photo.uri}} style={styles.image} />
+                  style={StyleSheet.absoluteFill}
+                >
+                  <Image source={{ uri: photo.uri }} style={styles.image} />
                 </Pressable>
               ) : null}
               <View
@@ -47,12 +41,13 @@ export function PhotoTiles({photos, onRemove}: Props) {
                   styles.content,
                   hasImage ? styles.contentOnImage : null,
                 ]}
-                pointerEvents="box-none">
+                pointerEvents="box-none"
+              >
                 <Text
-                  style={[styles.index, hasImage ? styles.onImageText : null]}>
+                  style={[styles.index, hasImage ? styles.onImageText : null]}
+                >
                   Photo {index + 1}
                 </Text>
-                {/* Source label (Camera/Gallery) only when there is no image yet */}
                 {!hasImage ? (
                   <Text style={styles.source}>{photo.source}</Text>
                 ) : null}
@@ -62,12 +57,14 @@ export function PhotoTiles({photos, onRemove}: Props) {
                     accessibilityLabel={`Remove photo ${index + 1}`}
                     hitSlop={8}
                     onPress={() => onRemove(photo.id)}
-                    style={styles.removeHit}>
+                    style={styles.removeHit}
+                  >
                     <Text
                       style={[
                         styles.remove,
                         hasImage ? styles.onImageText : null,
-                      ]}>
+                      ]}
+                    >
                       Remove
                     </Text>
                   </Pressable>
@@ -82,18 +79,20 @@ export function PhotoTiles({photos, onRemove}: Props) {
         visible={fullUri != null}
         transparent
         animationType="fade"
-        onRequestClose={() => setFullUri(null)}>
+        onRequestClose={() => setFullUri(null)}
+      >
         <View style={styles.fullScreen}>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Close full screen photo"
             onPress={() => setFullUri(null)}
-            style={[styles.closeHit, {top: insets.top + 8}]}>
+            style={[styles.closeHit, { top: insets.top + scale.vs(8) }]}
+          >
             <Text style={styles.closeLabel}>Close</Text>
           </Pressable>
           {fullUri ? (
             <Image
-              source={{uri: fullUri}}
+              source={{ uri: fullUri }}
               style={styles.fullImage}
               resizeMode="contain"
             />
@@ -108,12 +107,14 @@ const styles = StyleSheet.create({
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: scale.s(10),
+    alignItems: 'flex-start',
   },
   tile: {
     width: '47%',
     aspectRatio: 1.05,
-    borderRadius: 20,
+    alignSelf: 'flex-start',
+    borderRadius: radii.lg,
     backgroundColor: colors.tile,
     overflow: 'hidden',
   },
@@ -122,8 +123,8 @@ const styles = StyleSheet.create({
     height: '100%',
   },
   content: {
-    ...StyleSheet.absoluteFillObject,
-    padding: 12,
+    ...StyleSheet.absoluteFill,
+    padding: scale.s(12),
     justifyContent: 'space-between',
   },
   contentOnImage: {
@@ -131,24 +132,24 @@ const styles = StyleSheet.create({
   },
   index: {
     color: colors.text,
-    fontSize: 16,
+    fontSize: typography.body,
     fontWeight: '700',
   },
   source: {
     color: colors.muted,
-    fontSize: 14,
+    fontSize: typography.meta,
   },
   onImageText: {
     color: colors.card,
   },
   removeHit: {
-    minHeight: 32,
+    minHeight: hitSlop.remove,
     justifyContent: 'center',
     alignSelf: 'flex-start',
   },
   remove: {
     color: colors.danger,
-    fontSize: 14,
+    fontSize: typography.meta,
     fontWeight: '600',
   },
   fullScreen: {
@@ -162,17 +163,17 @@ const styles = StyleSheet.create({
   },
   closeHit: {
     position: 'absolute',
-    right: 16,
+    right: scale.s(16),
     zIndex: 2,
-    minHeight: 44,
-    paddingHorizontal: 14,
+    minHeight: hitSlop.close,
+    paddingHorizontal: scale.s(14),
     justifyContent: 'center',
-    borderRadius: 14,
+    borderRadius: radii.sm,
     backgroundColor: 'rgba(255,255,255,0.18)',
   },
   closeLabel: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: typography.body,
     fontWeight: '600',
   },
 });
