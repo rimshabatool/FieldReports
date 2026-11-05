@@ -16,6 +16,7 @@ import {PhoneStackParamList} from '../navigation/types';
 import {pickPhotos} from '../photos/pickMedia';
 import {colors, spacing} from '../theme';
 import {preparePhotosUnderLimit} from '../upload/imagePrep';
+import {addReport} from '../upload/queue';
 
 type Props = NativeStackScreenProps<PhoneStackParamList, 'Compose'>;
 
@@ -27,7 +28,8 @@ export function ComposeScreen({navigation}: Props) {
   const [showErrors, setShowErrors] = useState(false);
   const [picking, setPicking] = useState(false);
   const [compressing, setCompressing] = useState(false);
-  const busy = picking || compressing;
+  const [saving, setSaving] = useState(false);
+  const busy = picking || compressing || saving;
   const atLimit = photos.length >= MAX_PHOTOS;
   const remaining = MAX_PHOTOS - photos.length;
   const descriptionMissing = description.trim().length === 0;
@@ -81,13 +83,34 @@ export function ComposeScreen({navigation}: Props) {
     }
   }
 
-  function saveOnPhone() {
+  async function saveOnPhone() {
     setShowErrors(true);
-    if (descriptionMissing || photosMissing) {
+    if (descriptionMissing || photosMissing || busy) {
       return;
     }
 
-    navigation.goBack();
+    setSaving(true);
+    try {
+      await addReport({
+        description,
+        photos: photos
+          .filter(photo => Boolean(photo.uri))
+          .map(photo => ({
+            uri: photo.uri as string,
+            source: photo.source,
+          })),
+      });
+      navigation.goBack();
+    } catch (error) {
+      Alert.alert(
+        'Could not save',
+        error instanceof Error
+          ? error.message
+          : 'The report could not be saved on this phone.',
+      );
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -138,7 +161,11 @@ export function ComposeScreen({navigation}: Props) {
           />
         ) : null}
       </View>
-      <PrimaryButton label="Save on this phone" onPress={saveOnPhone} />
+      <PrimaryButton
+        label={saving ? 'Saving…' : 'Save on this phone'}
+        disabled={busy}
+        onPress={saveOnPhone}
+      />
     </ScrollView>
   );
 }

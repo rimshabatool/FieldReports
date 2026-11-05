@@ -7,11 +7,19 @@ const PORT = Number(process.env.PORT) || 8787;
 const MAX_BYTES = 5 * 1024 * 1024;
 const MIN_PHOTOS = 1;
 const MAX_PHOTOS = 5;
+const SLOW_MS = 8000;
+
+const FAIL_MODES = new Set(['off', 'slow', 'drop', 'refuse', 'hang']);
+
+/** @type {'off' | 'slow' | 'drop' | 'refuse' | 'hang'} */
+let failMode = FAIL_MODES.has(process.env.FAIL_MODE)
+  ? process.env.FAIL_MODE
+  : 'off';
 
 const uploadsDir = path.join(__dirname, 'uploads');
 fs.mkdirSync(uploadsDir, {recursive: true});
 
-/** @type {Map<string, {clientId: string, description: string, receivedAt: string, photos: {filename: string, url: string}[]}>} */
+/** @type {Map<string, {clientId: string, description: string, receivedAt: string, photos: {filename: string}[]}>} */
 const reportsByClientId = new Map();
 
 const storage = multer.diskStorage({
@@ -33,6 +41,7 @@ const upload = multer({
 });
 
 const app = express();
+app.use(express.json());
 
 function publicBase(req) {
   return `${req.protocol}://${req.get('host')}`;
@@ -59,8 +68,73 @@ function removeFiles(filenames) {
   }
 }
 
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+/**
+ * On-demand failure for upload testing.
+ * Runs after files are parsed, before the report is saved, so hang/drop/refuse
+ * do not pretend the server accepted the report.
+ */
+async function applyFailMode(req, res, files) {
+  const mode = failMode;
+
+  if (mode === 'off') {
+    return 'continue';
+  }
+
+  console.log(`[fail-mode] ${mode} on POST /reports`);
+
+  if (mode === 'slow') {
+    await delay(SLOW_MS);
+    return 'continue';
+  }
+
+  if (mode === 'refuse') {
+    removeFiles(files.map(file => file.filename));
+    res.status(403).json({error: 'Upload refused by fail mode.'});
+    return 'stop';
+  }
+
+  if (mode === 'drop') {
+    removeFiles(files.map(file => file.filename));
+    req.socket.destroy();
+    return 'stop';
+  }
+
+  if (mode === 'hang') {
+    // Never answer. Drop the temp files so disk does not fill while hanging.
+    removeFiles(files.map(file => file.filename));
+    return 'stop';
+  }
+
+  return 'continue';
+}
+
 app.get('/health', (_req, res) => {
-  res.json({ok: true});
+  res.json({ok: true, failMode});
+});
+
+app.get('/fail-mode', (_req, res) => {
+  res.json({
+    failMode,
+    modes: [...FAIL_MODES],
+    slowMs: SLOW_MS,
+  });
+});
+
+app.post('/fail-mode', (req, res) => {
+  const next = String(req.body.mode || '').trim().toLowerCase();
+  if (!FAIL_MODES.has(next)) {
+    res.status(400).json({
+      error: `mode must be one of: ${[...FAIL_MODES].join(', ')}`,
+    });
+    return;
+  }
+  failMode = next;
+  console.log(`[fail-mode] set to ${failMode}`);
+  res.json({failMode});
 });
 
 app.get('/reports', (req, res) => {
@@ -80,7 +154,7 @@ app.get('/reports/:clientId', (req, res) => {
 });
 
 app.post('/reports', (req, res) => {
-  upload.array('photos', MAX_PHOTOS)(req, res, err => {
+  upload.array('photos', MAX_PHOTOS)(req, res, async err => {
     if (err instanceof multer.MulterError) {
       if (err.code === 'LIMIT_FILE_SIZE') {
         res.status(400).json({
@@ -89,7 +163,9 @@ app.post('/reports', (req, res) => {
         return;
       }
       if (err.code === 'LIMIT_FILE_COUNT' || err.code === 'LIMIT_UNEXPECTED_FILE') {
-        res.status(400).json({error: `Send between ${MIN_PHOTOS} and ${MAX_PHOTOS} photos.`});
+        res.status(400).json({
+          error: `Send between ${MIN_PHOTOS} and ${MAX_PHOTOS} photos.`,
+        });
         return;
       }
       res.status(400).json({error: err.message});
@@ -101,6 +177,20 @@ app.post('/reports', (req, res) => {
     }
 
     const files = Array.isArray(req.files) ? req.files : [];
+
+    try {
+      const outcome = await applyFailMode(req, res, files);
+      if (outcome === 'stop') {
+        return;
+      }
+    } catch (failError) {
+      removeFiles(files.map(file => file.filename));
+      res.status(500).json({
+        error: failError instanceof Error ? failError.message : 'Fail mode error.',
+      });
+      return;
+    }
+
     const clientId = String(req.body.clientId || '').trim();
     const description = String(req.body.description || '').trim();
 
@@ -147,4 +237,5 @@ app.use('/uploads', express.static(uploadsDir));
 
 app.listen(PORT, () => {
   console.log(`Field Reports server on http://127.0.0.1:${PORT}`);
+  console.log(`Fail mode: ${failMode} (POST /fail-mode {"mode":"slow|drop|refuse|hang|off"})`);
 });

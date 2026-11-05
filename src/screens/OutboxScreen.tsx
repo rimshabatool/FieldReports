@@ -1,73 +1,63 @@
-import { useState } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {useCallback, useEffect, useState} from 'react';
+import {Alert, ScrollView, StyleSheet, Text, View} from 'react-native';
+import {NativeStackScreenProps} from '@react-navigation/native-stack';
+import {useFocusEffect} from '@react-navigation/native';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 
-import { PrimaryButton, TextButton } from '../components/Buttons';
-import { ReportCard } from '../components/ReportCard';
-import { ScreenHeader } from '../components/ScreenHeader';
-import { StatusTone } from '../components/StatusPill';
-import { PhoneStackParamList } from '../navigation/types';
-import { colors, spacing } from '../theme';
+import {PrimaryButton, TextButton} from '../components/Buttons';
+import {ReportCard} from '../components/ReportCard';
+import {ScreenHeader} from '../components/ScreenHeader';
+import {PhoneStackParamList} from '../navigation/types';
+import {colors, spacing} from '../theme';
+import {
+  clearLocalQueue,
+  ensureHydrated,
+  getReports,
+  subscribe,
+} from '../upload/queue';
+import {QueuedReport, statusLabel} from '../upload/types';
 
 type Props = NativeStackScreenProps<PhoneStackParamList, 'Outbox'>;
 
-type PhoneReport = {
-  id: string;
-  description: string;
-  photoCount: number;
-  tone: StatusTone;
-  label: string;
-  note?: string;
-};
-
-const SAMPLE_REPORTS: PhoneReport[] = [
-  {
-    id: 'stair-crack',
-    description: 'Crack along the north stair',
-    photoCount: 3,
-    tone: 'saved',
-    label: 'Saved on this phone',
-  },
-  {
-    id: 'basement-water',
-    description: 'Water at the basement door',
-    photoCount: 1,
-    tone: 'waiting',
-    label: 'Waiting for signal',
-  },
-  {
-    id: 'loose-railing',
-    description: 'Loose railing on the third floor',
-    photoCount: 5,
-    tone: 'uploading',
-    label: 'Uploading',
-    note: 'Sending photo 2 of 5',
-  },
-  {
-    id: 'exit-sign',
-    description: 'Blocked exit sign',
-    photoCount: 2,
-    tone: 'failed',
-    label: 'Failed',
-    note: 'Will not retry.',
-  },
-];
-
-export function OutboxScreen({ navigation }: Props) {
+export function OutboxScreen({navigation}: Props) {
   const insets = useSafeAreaInsets();
-  const [reports, setReports] = useState(SAMPLE_REPORTS);
+  const [reports, setReports] = useState<QueuedReport[]>(getReports());
+  const [clearing, setClearing] = useState(false);
+
+  useEffect(() => subscribe(setReports), []);
+
+  useFocusEffect(
+    useCallback(() => {
+      ensureHydrated().catch(() => {});
+    }, []),
+  );
 
   function confirmClear() {
+    if (clearing || reports.length === 0) {
+      return;
+    }
+
     Alert.alert(
       'Clear this phone',
-      'This removes reports stored on this phone. Reports already on the server stay there.',
+      'Stops any upload in progress and deletes reports and photos stored on this phone only. Reports already on the server stay there.',
       [
-        { text: 'Cancel', style: 'cancel' },
+        {text: 'Cancel', style: 'cancel'},
         {
           text: 'Clear this phone',
           style: 'destructive',
-          onPress: () => setReports([]),
+          onPress: () => {
+            setClearing(true);
+            clearLocalQueue()
+              .catch(() => {
+                Alert.alert(
+                  'Could not clear',
+                  'Something went wrong while clearing this phone.',
+                );
+              })
+              .finally(() => {
+                setClearing(false);
+              });
+          },
         },
       ],
     );
@@ -79,7 +69,7 @@ export function OutboxScreen({ navigation }: Props) {
         style={styles.fill}
         contentContainerStyle={[
           styles.content,
-          { paddingTop: insets.top + 12 },
+          {paddingTop: insets.top + 12},
         ]}
         keyboardShouldPersistTaps="handled">
         <ScreenHeader title="Your Reports" />
@@ -94,13 +84,13 @@ export function OutboxScreen({ navigation }: Props) {
           <View style={styles.list}>
             {reports.map(report => (
               <ReportCard
-                key={report.id}
+                key={report.clientId}
                 description={report.description}
-                meta={`${report.photoCount} ${
-                  report.photoCount === 1 ? 'photo' : 'photos'
+                meta={`${report.photos.length} ${
+                  report.photos.length === 1 ? 'photo' : 'photos'
                 }`}
-                statusLabel={report.label}
-                statusTone={report.tone}
+                statusLabel={statusLabel(report.status)}
+                statusTone={report.status}
                 note={report.note}
               />
             ))}
@@ -112,7 +102,11 @@ export function OutboxScreen({ navigation }: Props) {
           label="New report"
           onPress={() => navigation.navigate('Compose')}
         />
-        <TextButton label="Clear this phone" onPress={confirmClear} />
+        <TextButton
+          label={clearing ? 'Clearing…' : 'Clear this phone'}
+          disabled={clearing || reports.length === 0}
+          onPress={confirmClear}
+        />
       </View>
     </View>
   );

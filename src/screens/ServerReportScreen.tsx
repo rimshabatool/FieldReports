@@ -1,25 +1,27 @@
-import { ScrollView, StyleSheet, Text } from 'react-native';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import {ScrollView, StyleSheet, Text} from 'react-native';
+import {NativeStackScreenProps} from '@react-navigation/native-stack';
 
-import { PhotoTiles } from '../components/PhotoTiles';
-import { ServerStackParamList } from '../navigation/types';
-import { colors, spacing } from '../theme';
+import {PhotoTiles} from '../components/PhotoTiles';
+import {ServerStackParamList} from '../navigation/types';
+import {colors, spacing} from '../theme';
+import {formatReceivedAt} from '../upload/api';
 
 type Props = NativeStackScreenProps<ServerStackParamList, 'ServerReport'>;
 
-export function ServerReportScreen({ route }: Props) {
-  const { description, photoCount, receivedAt } = route.params;
-  const photos = Array.from({ length: photoCount }, (_, index) => ({
-    id: `server-photo-${index + 1}`,
+export function ServerReportScreen({route}: Props) {
+  const {description, receivedAt, photos} = route.params;
+  const tiles = (photos ?? []).map((photo, index) => ({
+    id: photo.filename || `server-photo-${index + 1}`,
     source: 'On the server',
+    uri: photo.url,
   }));
 
   return (
     <ScrollView contentContainerStyle={styles.content}>
       <Text style={styles.kicker}>Received Report</Text>
       <Text style={styles.description}>{description}</Text>
-      <Text style={styles.meta}>{receivedAt}</Text>
-      <PhotoTiles photos={photos} />
+      <Text style={styles.meta}>{formatReceivedAt(receivedAt)}</Text>
+      {tiles.length > 0 ? <PhotoTiles photos={tiles} /> : null}
     </ScrollView>
   );
 }
