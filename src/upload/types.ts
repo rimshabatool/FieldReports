@@ -20,7 +20,7 @@ export function statusLabel(status: QueueStatus): string {
     case 'saved':
       return 'Saved on this phone';
     case 'waiting':
-      return 'Waiting for signal';
+      return 'Waiting';
     case 'uploading':
       return 'Uploading';
     case 'failed':

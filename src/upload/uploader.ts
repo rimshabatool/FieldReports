@@ -1,6 +1,6 @@
 import NetInfo from '@react-native-community/netinfo';
 
-import { UploadRequestError, uploadReport } from './api';
+import {UploadRequestError, uploadReport} from './api';
 import {
   ensureHydrated,
   getReports,
@@ -8,11 +8,14 @@ import {
   setReportsWaitingForSignal,
   updateReportStatus,
 } from './queue';
-import { QueuedReport } from './types';
+import {QueuedReport} from './types';
+
+const SERVER_RETRY_MS = 12_000;
 
 let runToken = 0;
 let loopRunning = false;
 let netUnsubscribe: (() => void) | null = null;
+let retryTimer: ReturnType<typeof setTimeout> | null = null;
 
 function stateLooksOnline(state: {
   isConnected: boolean | null;
@@ -35,9 +38,29 @@ function nextUploadCandidate(): QueuedReport | undefined {
   );
 }
 
-async function uploadOne(report: QueuedReport, token: number): Promise<void> {
+function clearRetryTimer(): void {
+  if (retryTimer) {
+    clearTimeout(retryTimer);
+    retryTimer = null;
+  }
+}
+
+function scheduleServerRetry(): void {
+  clearRetryTimer();
+  retryTimer = setTimeout(() => {
+    retryTimer = null;
+    kickUploader().catch(() => {});
+  }, SERVER_RETRY_MS);
+}
+
+type UploadOutcome = 'done' | 'offline' | 'server_unreachable';
+
+async function uploadOne(
+  report: QueuedReport,
+  token: number,
+): Promise<UploadOutcome> {
   if (token !== runToken) {
-    return;
+    return 'done';
   }
 
   const total = report.photos.length;
@@ -50,12 +73,13 @@ async function uploadOne(report: QueuedReport, token: number): Promise<void> {
   try {
     await uploadReport(report);
     if (token !== runToken) {
-      return;
+      return 'done';
     }
     await removeReport(report.clientId);
+    return 'done';
   } catch (error) {
     if (token !== runToken) {
-      return;
+      return 'done';
     }
 
     if (error instanceof UploadRequestError && !error.retryable) {
@@ -64,7 +88,7 @@ async function uploadOne(report: QueuedReport, token: number): Promise<void> {
         'failed',
         error.message || 'Will not retry.',
       );
-      return;
+      return 'done';
     }
 
     const online = await isOnline();
@@ -74,25 +98,22 @@ async function uploadOne(report: QueuedReport, token: number): Promise<void> {
         'waiting',
         'Waiting for signal',
       );
-      return;
+      return 'offline';
     }
 
-    const message =
-      error instanceof Error ? error.message : 'Will retry.';
+    const message = error instanceof Error ? error.message : 'Will retry.';
     const timedOut = /timed?\s*out|aborted|network request failed/i.test(
       message,
     );
     await updateReportStatus(
       report.clientId,
-      'saved',
-      timedOut ? 'No response — will retry.' : message,
+      'waiting',
+      timedOut
+        ? 'No response — will retry.'
+        : 'Server unreachable — will retry.',
     );
-    await delay(1500);
+    return 'server_unreachable';
   }
-}
-
-function delay(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 export async function kickUploader(): Promise<void> {
@@ -118,7 +139,14 @@ export async function kickUploader(): Promise<void> {
         break;
       }
 
-      await uploadOne(next, token);
+      const outcome = await uploadOne(next, token);
+      if (outcome === 'offline') {
+        break;
+      }
+      if (outcome === 'server_unreachable') {
+        scheduleServerRetry();
+        break;
+      }
     }
   } finally {
     loopRunning = false;
@@ -128,6 +156,7 @@ export async function kickUploader(): Promise<void> {
 export function abortUploader(): void {
   runToken += 1;
   loopRunning = false;
+  clearRetryTimer();
 }
 
 export function startUploader(): () => void {
@@ -141,11 +170,13 @@ export function startUploader(): () => void {
     if (stateLooksOnline(state)) {
       kickUploader().catch(() => {});
     } else {
+      clearRetryTimer();
       setReportsWaitingForSignal().catch(() => {});
     }
   });
 
   return () => {
+    clearRetryTimer();
     if (netUnsubscribe) {
       netUnsubscribe();
       netUnsubscribe = null;
