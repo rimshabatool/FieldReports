@@ -18,13 +18,7 @@ function stateLooksOnline(state: {
   isConnected: boolean | null;
   isInternetReachable?: boolean | null;
 }): boolean {
-  if (state.isConnected === false) {
-    return false;
-  }
-  if (state.isInternetReachable === false) {
-    return false;
-  }
-  return true;
+  return state.isConnected !== false && state.isInternetReachable !== false;
 }
 
 async function isOnline(): Promise<boolean> {
@@ -83,11 +77,15 @@ async function uploadOne(report: QueuedReport, token: number): Promise<void> {
       return;
     }
 
-    // Still online but request failed — keep on phone and try again later.
+    const message =
+      error instanceof Error ? error.message : 'Will retry.';
+    const timedOut = /timed?\s*out|aborted|network request failed/i.test(
+      message,
+    );
     await updateReportStatus(
       report.clientId,
       'saved',
-      error instanceof Error ? error.message : 'Will retry.',
+      timedOut ? 'No response — will retry.' : message,
     );
     await delay(1500);
   }
@@ -97,10 +95,6 @@ function delay(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-/**
- * Process the local queue one report at a time.
- * Stops when offline, empty, or abortUploader() was called (Clear this phone).
- */
 export async function kickUploader(): Promise<void> {
   if (loopRunning) {
     return;
@@ -124,29 +118,18 @@ export async function kickUploader(): Promise<void> {
         break;
       }
 
-      // Skip permanent failures.
-      if (next.status === 'failed') {
-        break;
-      }
-
       await uploadOne(next, token);
     }
   } finally {
-    if (token === runToken) {
-      loopRunning = false;
-    } else {
-      loopRunning = false;
-    }
+    loopRunning = false;
   }
 }
 
-/** Bump the run token so an in-flight upload stops treating results as current. */
 export function abortUploader(): void {
   runToken += 1;
   loopRunning = false;
 }
 
-/** Start listening for network changes and drain the queue when online. */
 export function startUploader(): () => void {
   kickUploader().catch(() => {});
 

@@ -3,7 +3,7 @@ import {NativeStackScreenProps} from '@react-navigation/native-stack';
 
 import {PhotoTiles} from '../components/PhotoTiles';
 import {ServerStackParamList} from '../navigation/types';
-import {colors, spacing} from '../theme';
+import {colors, scale, spacing, typography} from '../theme';
 import {formatReceivedAt} from '../upload/api';
 
 type Props = NativeStackScreenProps<ServerStackParamList, 'ServerReport'>;
@@ -29,24 +29,24 @@ export function ServerReportScreen({route}: Props) {
 const styles = StyleSheet.create({
   content: {
     padding: spacing.screen,
-    gap: 14,
-    paddingBottom: 32,
+    gap: scale.s(14),
+    paddingBottom: scale.vs(32),
   },
   kicker: {
     color: colors.muted,
-    fontSize: 13,
+    fontSize: typography.caption,
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.4,
   },
   description: {
     color: colors.text,
-    fontSize: 24,
+    fontSize: typography.title,
     fontWeight: '700',
-    lineHeight: 30,
+    lineHeight: scale.vs(30),
   },
   meta: {
     color: colors.muted,
-    fontSize: 15,
+    fontSize: typography.label,
   },
 });

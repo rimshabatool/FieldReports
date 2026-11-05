@@ -1,4 +1,4 @@
-import {Alert, Linking} from 'react-native';
+import {Alert, Linking, PermissionsAndroid, Platform} from 'react-native';
 import {
   Asset,
   ImagePickerResponse,
@@ -40,6 +40,36 @@ function showPermissionHelp(kind: 'camera' | 'gallery') {
   ]);
 }
 
+async function ensureCameraPermission(): Promise<boolean> {
+  if (Platform.OS !== 'android') {
+    return true;
+  }
+
+  const alreadyGranted = await PermissionsAndroid.check(
+    PermissionsAndroid.PERMISSIONS.CAMERA,
+  );
+  if (alreadyGranted) {
+    return true;
+  }
+
+  const result = await PermissionsAndroid.request(
+    PermissionsAndroid.PERMISSIONS.CAMERA,
+    {
+      title: 'Camera permission',
+      message: 'Field Reports needs the camera to take a photo for this report.',
+      buttonPositive: 'Allow',
+      buttonNegative: 'Not now',
+    },
+  );
+
+  if (result === PermissionsAndroid.RESULTS.GRANTED) {
+    return true;
+  }
+
+  showPermissionHelp('camera');
+  return false;
+}
+
 function toPickedPhotos(assets: Asset[] | undefined): PickedPhoto[] {
   if (!assets) {
     return [];
@@ -68,10 +98,21 @@ function handlePickerResult(
     return [];
   }
 
+  if (response.errorCode === 'camera_unavailable') {
+    Alert.alert(
+      'Camera not available',
+      Platform.OS === 'ios'
+        ? 'The iOS Simulator has no camera. Use Gallery, or run on a real iPhone.'
+        : 'No camera is available on this device. Use Gallery instead.',
+    );
+    return [];
+  }
+
   if (response.errorCode || response.errorMessage) {
     Alert.alert(
       'Could not add photo',
-      response.errorMessage || 'Something went wrong while picking a photo.',
+      response.errorMessage ||
+        `Something went wrong while picking a photo (${response.errorCode ?? 'unknown'}).`,
     );
     return [];
   }
@@ -80,6 +121,11 @@ function handlePickerResult(
 }
 
 export async function pickFromCamera(): Promise<PickedPhoto[]> {
+  const allowed = await ensureCameraPermission();
+  if (!allowed) {
+    return [];
+  }
+
   const response = await launchCamera(CAMERA_OPTIONS);
   return handlePickerResult(response, 'camera');
 }
@@ -97,7 +143,6 @@ export async function pickFromGallery(
 
 export type PhotoSourceChoice = 'Camera' | 'Gallery';
 
-/** System choice sheet: Camera or Gallery. Cancel returns null. */
 export function choosePhotoSource(): Promise<PhotoSourceChoice | null> {
   return new Promise(resolve => {
     Alert.alert('Add photo', undefined, [

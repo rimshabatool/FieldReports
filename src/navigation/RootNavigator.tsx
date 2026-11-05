@@ -1,20 +1,21 @@
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { PlatformPressable } from '@react-navigation/elements';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ComposeScreen } from '../screens/ComposeScreen';
 import { OutboxScreen } from '../screens/OutboxScreen';
 import { ServerReportScreen } from '../screens/ServerReportScreen';
 import { ServerReportsScreen } from '../screens/ServerReportsScreen';
-import { colors } from '../theme';
+import {colors, scale, typography} from '../theme';
 import {
   PhoneStackParamList,
   ServerStackParamList,
   TabParamList,
 } from './types';
 
-const TAB_BAR_CONTENT_HEIGHT = 56;
+const TAB_BAR_CONTENT_HEIGHT = scale.vs(42);
 
 const PhoneStack = createNativeStackNavigator<PhoneStackParamList>();
 const ServerStack = createNativeStackNavigator<ServerStackParamList>();
@@ -36,8 +37,11 @@ const screenOptions = {
   headerStyle: { backgroundColor: colors.background },
   headerShadowVisible: false,
   headerTintColor: colors.text,
-  headerTitleStyle: { fontSize: 17, fontWeight: '600' as const },
-  contentStyle: { backgroundColor: colors.background },
+  headerTitleStyle: {
+    fontSize: typography.button,
+    fontWeight: '600' as const,
+  },
+  contentStyle: {backgroundColor: colors.background},
 };
 
 function PhoneNavigator() {
@@ -76,7 +80,7 @@ function ServerNavigator() {
 
 export function RootNavigator() {
   const insets = useSafeAreaInsets();
-  const bottomInset = Math.max(insets.bottom, 8);
+  const bottomInset = Math.max(insets.bottom, scale.vs(8));
 
   return (
     <NavigationContainer theme={navigationTheme}>
@@ -89,16 +93,23 @@ export function RootNavigator() {
             backgroundColor: colors.card,
             borderTopColor: colors.line,
             height: TAB_BAR_CONTENT_HEIGHT + bottomInset,
-            paddingTop: 8,
+            paddingTop: scale.vs(8),
             paddingBottom: bottomInset,
           },
           tabBarShowLabel: true,
           tabBarIcon: () => null,
-          tabBarIconStyle: { display: 'none' },
+          tabBarIconStyle: {display: 'none'},
           tabBarLabelStyle: {
-            fontSize: 13,
+            fontSize: typography.caption,
             fontWeight: '600',
           },
+          tabBarButton: props => (
+            <PlatformPressable
+              {...props}
+              pressColor="transparent"
+              android_ripple={{color: 'transparent', borderless: false}}
+            />
+          ),
         }}>
         <Tabs.Screen
           name="Phone"

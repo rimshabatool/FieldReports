@@ -1,14 +1,9 @@
 export type QueuedPhoto = {
   id: string;
-  /** Absolute file path on this phone (copied into app storage). */
   path: string;
   source: string;
 };
 
-/**
- * Local queue status only. "Uploaded" is not a phone-queue status —
- * once the server has it, the report leaves this list in a later step.
- */
 export type QueueStatus = 'saved' | 'waiting' | 'uploading' | 'failed';
 
 export type QueuedReport = {
@@ -31,6 +26,10 @@ export function statusLabel(status: QueueStatus): string {
     case 'failed':
       return 'Failed';
   }
+}
+
+export function photoCountLabel(count: number): string {
+  return `${count} ${count === 1 ? 'photo' : 'photos'}`;
 }
 
 export function createClientId(): string {

@@ -14,12 +14,13 @@ import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {ReportCard} from '../components/ReportCard';
 import {ScreenHeader} from '../components/ScreenHeader';
 import {ServerStackParamList} from '../navigation/types';
-import {colors, spacing} from '../theme';
+import {colors, radii, scale, spacing, typography} from '../theme';
 import {
   fetchServerReports,
   formatReceivedAt,
   ServerReport,
 } from '../upload/api';
+import {photoCountLabel} from '../upload/types';
 
 type Props = NativeStackScreenProps<ServerStackParamList, 'ServerReports'>;
 
@@ -30,16 +31,15 @@ export function ServerReportsScreen({navigation}: Props) {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async (mode: 'focus' | 'refresh') => {
-    if (mode === 'refresh') {
+  const load = useCallback(async (isRefresh = false) => {
+    if (isRefresh) {
       setRefreshing(true);
     } else {
       setLoading(true);
     }
 
     try {
-      const next = await fetchServerReports();
-      setReports(next);
+      setReports(await fetchServerReports());
       setError(null);
     } catch (loadError) {
       setReports([]);
@@ -56,19 +56,22 @@ export function ServerReportsScreen({navigation}: Props) {
 
   useFocusEffect(
     useCallback(() => {
-      load('focus').catch(() => {});
+      load().catch(() => {});
     }, [load]),
   );
 
   return (
     <ScrollView
       style={styles.fill}
-      contentContainerStyle={[styles.content, {paddingTop: insets.top + 12}]}
+      contentContainerStyle={[
+        styles.content,
+        {paddingTop: insets.top + scale.vs(12)},
+      ]}
       refreshControl={
         <RefreshControl
           refreshing={refreshing}
           onRefresh={() => {
-            load('refresh').catch(() => {});
+            load(true).catch(() => {});
           }}
           tintColor={colors.button}
         />
@@ -111,9 +114,9 @@ export function ServerReportsScreen({navigation}: Props) {
             <ReportCard
               key={report.clientId}
               description={report.description}
-              meta={`${report.photoCount} ${
-                report.photoCount === 1 ? 'photo' : 'photos'
-              } · ${formatReceivedAt(report.receivedAt)}`}
+              meta={`${photoCountLabel(report.photoCount)} · ${formatReceivedAt(
+                report.receivedAt,
+              )}`}
               onPress={() =>
                 navigation.navigate('ServerReport', {
                   clientId: report.clientId,
@@ -138,26 +141,26 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: spacing.screen,
-    paddingBottom: 24,
-    gap: 20,
+    paddingBottom: scale.vs(24),
+    gap: scale.s(20),
   },
   list: {
-    gap: 12,
+    gap: scale.s(12),
   },
   centerBox: {
     backgroundColor: colors.card,
-    borderRadius: 28,
-    padding: 18,
-    gap: 8,
+    borderRadius: radii.xl,
+    padding: spacing.card,
+    gap: scale.s(6),
   },
   emptyTitle: {
     color: colors.text,
-    fontSize: 17,
+    fontSize: typography.button,
     fontWeight: '600',
   },
   muted: {
     color: colors.muted,
-    fontSize: 15,
-    lineHeight: 21,
+    fontSize: typography.label,
+    lineHeight: scale.vs(19),
   },
 });

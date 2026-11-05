@@ -11,15 +11,13 @@ const SLOW_MS = 8000;
 
 const FAIL_MODES = new Set(['off', 'slow', 'drop', 'refuse', 'hang']);
 
-/** @type {'off' | 'slow' | 'drop' | 'refuse' | 'hang'} */
 let failMode = FAIL_MODES.has(process.env.FAIL_MODE)
   ? process.env.FAIL_MODE
   : 'off';
 
 const uploadsDir = path.join(__dirname, 'uploads');
-fs.mkdirSync(uploadsDir, {recursive: true});
+fs.mkdirSync(uploadsDir, { recursive: true });
 
-/** @type {Map<string, {clientId: string, description: string, receivedAt: string, photos: {filename: string}[]}>} */
 const reportsByClientId = new Map();
 
 const storage = multer.diskStorage({
@@ -72,11 +70,6 @@ function delay(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-/**
- * On-demand failure for upload testing.
- * Runs after files are parsed, before the report is saved, so hang/drop/refuse
- * do not pretend the server accepted the report.
- */
 async function applyFailMode(req, res, files) {
   const mode = failMode;
 
@@ -93,7 +86,7 @@ async function applyFailMode(req, res, files) {
 
   if (mode === 'refuse') {
     removeFiles(files.map(file => file.filename));
-    res.status(403).json({error: 'Upload refused by fail mode.'});
+    res.status(403).json({ error: 'Upload refused by fail mode.' });
     return 'stop';
   }
 
@@ -104,7 +97,6 @@ async function applyFailMode(req, res, files) {
   }
 
   if (mode === 'hang') {
-    // Never answer. Drop the temp files so disk does not fill while hanging.
     removeFiles(files.map(file => file.filename));
     return 'stop';
   }
@@ -113,7 +105,7 @@ async function applyFailMode(req, res, files) {
 }
 
 app.get('/health', (_req, res) => {
-  res.json({ok: true, failMode});
+  res.json({ ok: true, failMode });
 });
 
 app.get('/fail-mode', (_req, res) => {
@@ -125,7 +117,9 @@ app.get('/fail-mode', (_req, res) => {
 });
 
 app.post('/fail-mode', (req, res) => {
-  const next = String(req.body.mode || '').trim().toLowerCase();
+  const next = String(req.body.mode || '')
+    .trim()
+    .toLowerCase();
   if (!FAIL_MODES.has(next)) {
     res.status(400).json({
       error: `mode must be one of: ${[...FAIL_MODES].join(', ')}`,
@@ -134,20 +128,20 @@ app.post('/fail-mode', (req, res) => {
   }
   failMode = next;
   console.log(`[fail-mode] set to ${failMode}`);
-  res.json({failMode});
+  res.json({ failMode });
 });
 
 app.get('/reports', (req, res) => {
   const reports = Array.from(reportsByClientId.values())
     .sort((a, b) => (a.receivedAt < b.receivedAt ? 1 : -1))
     .map(report => toPublicReport(req, report));
-  res.json({reports});
+  res.json({ reports });
 });
 
 app.get('/reports/:clientId', (req, res) => {
   const report = reportsByClientId.get(req.params.clientId);
   if (!report) {
-    res.status(404).json({error: 'Report not found.'});
+    res.status(404).json({ error: 'Report not found.' });
     return;
   }
   res.json(toPublicReport(req, report));
@@ -162,17 +156,20 @@ app.post('/reports', (req, res) => {
         });
         return;
       }
-      if (err.code === 'LIMIT_FILE_COUNT' || err.code === 'LIMIT_UNEXPECTED_FILE') {
+      if (
+        err.code === 'LIMIT_FILE_COUNT' ||
+        err.code === 'LIMIT_UNEXPECTED_FILE'
+      ) {
         res.status(400).json({
           error: `Send between ${MIN_PHOTOS} and ${MAX_PHOTOS} photos.`,
         });
         return;
       }
-      res.status(400).json({error: err.message});
+      res.status(400).json({ error: err.message });
       return;
     }
     if (err) {
-      res.status(400).json({error: err.message || 'Upload failed.'});
+      res.status(400).json({ error: err.message || 'Upload failed.' });
       return;
     }
 
@@ -186,7 +183,8 @@ app.post('/reports', (req, res) => {
     } catch (failError) {
       removeFiles(files.map(file => file.filename));
       res.status(500).json({
-        error: failError instanceof Error ? failError.message : 'Fail mode error.',
+        error:
+          failError instanceof Error ? failError.message : 'Fail mode error.',
       });
       return;
     }
@@ -196,13 +194,12 @@ app.post('/reports', (req, res) => {
 
     if (!clientId) {
       removeFiles(files.map(file => file.filename));
-      res.status(400).json({error: 'clientId is required.'});
+      res.status(400).json({ error: 'clientId is required.' });
       return;
     }
 
     const existing = reportsByClientId.get(clientId);
     if (existing) {
-      // Same client id = same report. Drop the retry files; keep the first copy.
       removeFiles(files.map(file => file.filename));
       res.status(200).json(toPublicReport(req, existing));
       return;
@@ -210,7 +207,7 @@ app.post('/reports', (req, res) => {
 
     if (!description) {
       removeFiles(files.map(file => file.filename));
-      res.status(400).json({error: 'description is required.'});
+      res.status(400).json({ error: 'description is required.' });
       return;
     }
 
@@ -226,7 +223,7 @@ app.post('/reports', (req, res) => {
       clientId,
       description,
       receivedAt: new Date().toISOString(),
-      photos: files.map(file => ({filename: file.filename})),
+      photos: files.map(file => ({ filename: file.filename })),
     };
     reportsByClientId.set(clientId, report);
     res.status(201).json(toPublicReport(req, report));
@@ -237,5 +234,7 @@ app.use('/uploads', express.static(uploadsDir));
 
 app.listen(PORT, () => {
   console.log(`Field Reports server on http://127.0.0.1:${PORT}`);
-  console.log(`Fail mode: ${failMode} (POST /fail-mode {"mode":"slow|drop|refuse|hang|off"})`);
+  console.log(
+    `Fail mode: ${failMode} (POST /fail-mode {"mode":"slow|drop|refuse|hang|off"})`,
+  );
 });

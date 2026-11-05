@@ -57,10 +57,6 @@ export async function saveQueue(reports: QueuedReport[]): Promise<void> {
   );
 }
 
-/**
- * Copy a picked/compressed photo into durable app storage so force-quit
- * cannot lose it when the picker temp file is cleared.
- */
 export async function copyPhotoToStore(
   clientId: string,
   index: number,
@@ -101,20 +97,7 @@ export async function deleteReportPhotos(clientId: string): Promise<void> {
   await removePathRecursive(`${photosRoot()}/${clientId}`);
 }
 
-/**
- * Wipe the local queue file and every copied photo folder.
- * Does not call the server — copies already received stay there.
- */
-export async function clearAllStoredReports(
-  _reports: QueuedReport[],
-): Promise<void> {
+export async function clearAllStoredReports(): Promise<void> {
   await removePathRecursive(photosRoot());
   await saveQueue([]);
-}
-
-export function pathToDisplayUri(path: string): string {
-  if (path.startsWith('file://') || path.startsWith('content://')) {
-    return path;
-  }
-  return `file://${path}`;
 }

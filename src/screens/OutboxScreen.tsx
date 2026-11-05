@@ -8,14 +8,14 @@ import {PrimaryButton, TextButton} from '../components/Buttons';
 import {ReportCard} from '../components/ReportCard';
 import {ScreenHeader} from '../components/ScreenHeader';
 import {PhoneStackParamList} from '../navigation/types';
-import {colors, spacing} from '../theme';
+import {colors, scale, spacing, typography} from '../theme';
 import {
   clearLocalQueue,
   ensureHydrated,
   getReports,
   subscribe,
 } from '../upload/queue';
-import {QueuedReport, statusLabel} from '../upload/types';
+import {QueuedReport, photoCountLabel, statusLabel} from '../upload/types';
 
 type Props = NativeStackScreenProps<PhoneStackParamList, 'Outbox'>;
 
@@ -69,15 +69,16 @@ export function OutboxScreen({navigation}: Props) {
         style={styles.fill}
         contentContainerStyle={[
           styles.content,
-          {paddingTop: insets.top + 12},
+          reports.length === 0 && styles.contentEmpty,
+          {paddingTop: insets.top + scale.vs(12)},
         ]}
         keyboardShouldPersistTaps="handled">
         <ScreenHeader title="Your Reports" />
         {reports.length === 0 ? (
           <View style={styles.empty}>
-            <Text style={styles.emptyTitle}>Nothing waiting to send.</Text>
+            <Text style={styles.emptyTitle}>No reports yet</Text>
             <Text style={styles.emptyBody}>
-              A new report stays here until it reaches the server.
+              New ones stay here until they reach the server.
             </Text>
           </View>
         ) : (
@@ -86,9 +87,7 @@ export function OutboxScreen({navigation}: Props) {
               <ReportCard
                 key={report.clientId}
                 description={report.description}
-                meta={`${report.photos.length} ${
-                  report.photos.length === 1 ? 'photo' : 'photos'
-                }`}
+                meta={photoCountLabel(report.photos.length)}
                 statusLabel={statusLabel(report.status)}
                 statusTone={report.status}
                 note={report.note}
@@ -102,11 +101,13 @@ export function OutboxScreen({navigation}: Props) {
           label="New report"
           onPress={() => navigation.navigate('Compose')}
         />
-        <TextButton
-          label={clearing ? 'Clearing…' : 'Clear this phone'}
-          disabled={clearing || reports.length === 0}
-          onPress={confirmClear}
-        />
+        {reports.length > 0 ? (
+          <TextButton
+            label={clearing ? 'Clearing…' : 'Clear this phone'}
+            disabled={clearing}
+            onPress={confirmClear}
+          />
+        ) : null}
       </View>
     </View>
   );
@@ -119,33 +120,41 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: spacing.screen,
-    paddingBottom: 16,
-    gap: 20,
+    paddingBottom: scale.vs(16),
+    gap: scale.s(20),
+  },
+  contentEmpty: {
+    flexGrow: 1,
   },
   list: {
-    gap: 12,
+    gap: scale.s(12),
   },
   empty: {
-    backgroundColor: colors.card,
-    borderRadius: 28,
-    padding: 18,
-    gap: 6,
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: spacing.screen,
+    gap: scale.s(8),
   },
   emptyTitle: {
     color: colors.text,
-    fontSize: 17,
-    fontWeight: '600',
+    fontSize: typography.title,
+    fontWeight: '700',
+    textAlign: 'center',
+    letterSpacing: -0.2,
   },
   emptyBody: {
     color: colors.muted,
-    fontSize: 15,
-    lineHeight: 21,
+    fontSize: typography.meta,
+    lineHeight: scale.vs(17),
+    textAlign: 'center',
+    maxWidth: scale.s(240),
   },
   footer: {
     paddingHorizontal: spacing.screen,
-    paddingTop: 8,
-    paddingBottom: 10,
-    gap: 4,
+    paddingTop: scale.vs(4),
+    paddingBottom: scale.vs(6),
+    gap: scale.s(0),
     backgroundColor: colors.background,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: colors.line,

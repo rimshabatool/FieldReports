@@ -1,6 +1,10 @@
 import ReactNativeBlobUtil from 'react-native-blob-util';
 
-import {SERVER_BASE_URL} from './config';
+import {
+  FETCH_TIMEOUT_MS,
+  getServerBaseUrl,
+  UPLOAD_TIMEOUT_MS,
+} from './config';
 import {QueuedReport} from './types';
 
 export type ServerPhoto = {
@@ -40,11 +44,6 @@ function filePart(path: string, index: number) {
   };
 }
 
-/**
- * POST one report. Identity is clientId — retrying the same id must not
- * create a second server copy (server returns the first report).
- * Success only after the response body is fully read.
- */
 export async function uploadReport(
   report: QueuedReport,
 ): Promise<UploadSuccess> {
@@ -58,9 +57,11 @@ export async function uploadReport(
   let bodyText = '';
 
   try {
-    const response = await ReactNativeBlobUtil.fetch(
+    const response = await ReactNativeBlobUtil.config({
+      timeout: UPLOAD_TIMEOUT_MS,
+    }).fetch(
       'POST',
-      `${SERVER_BASE_URL}/reports`,
+      `${getServerBaseUrl()}/reports`,
       {'Content-Type': 'multipart/form-data'},
       parts,
     );
@@ -86,22 +87,34 @@ export async function uploadReport(
     return parsed;
   }
 
-  const message =
-    parsed && typeof parsed === 'object' && 'error' in parsed && parsed.error
-      ? String(parsed.error)
-      : `Upload failed (${status || 'network'}).`;
+  const serverError =
+    parsed && typeof parsed === 'object' && 'error' in parsed
+      ? parsed.error
+      : undefined;
+  const message = serverError
+    ? String(serverError)
+    : `Upload failed (${status || 'network'}).`;
 
-  // 4xx = real rejection (too big, bad request) — do not retry forever.
-  const retryable = status === 0 || status >= 500;
-  throw new UploadRequestError(message, status, retryable);
+  throw new UploadRequestError(
+    message,
+    status,
+    status === 0 || status >= 500,
+  );
 }
 
 export async function fetchServerReports(): Promise<ServerReport[]> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+
   let response: Response;
   try {
-    response = await fetch(`${SERVER_BASE_URL}/reports`);
+    response = await fetch(`${getServerBaseUrl()}/reports`, {
+      signal: controller.signal,
+    });
   } catch {
     throw new Error('Could not reach the server.');
+  } finally {
+    clearTimeout(timer);
   }
 
   if (!response.ok) {
