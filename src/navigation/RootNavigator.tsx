@@ -1,6 +1,7 @@
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { ComposeScreen } from '../screens/ComposeScreen';
 import { OutboxScreen } from '../screens/OutboxScreen';
@@ -12,6 +13,8 @@ import {
   ServerStackParamList,
   TabParamList,
 } from './types';
+
+const TAB_BAR_CONTENT_HEIGHT = 56;
 
 const PhoneStack = createNativeStackNavigator<PhoneStackParamList>();
 const ServerStack = createNativeStackNavigator<ServerStackParamList>();
@@ -72,6 +75,9 @@ function ServerNavigator() {
 }
 
 export function RootNavigator() {
+  const insets = useSafeAreaInsets();
+  const bottomInset = Math.max(insets.bottom, 8);
+
   return (
     <NavigationContainer theme={navigationTheme}>
       <Tabs.Navigator
@@ -82,8 +88,9 @@ export function RootNavigator() {
           tabBarStyle: {
             backgroundColor: colors.card,
             borderTopColor: colors.line,
-            height: 64,
-            paddingTop: 6,
+            height: TAB_BAR_CONTENT_HEIGHT + bottomInset,
+            paddingTop: 8,
+            paddingBottom: bottomInset,
           },
           tabBarShowLabel: true,
           tabBarIcon: () => null,

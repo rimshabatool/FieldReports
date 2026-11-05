@@ -84,7 +84,9 @@ export async function pickFromCamera(): Promise<PickedPhoto[]> {
   return handlePickerResult(response, 'camera');
 }
 
-export async function pickFromGallery(remaining: number): Promise<PickedPhoto[]> {
+export async function pickFromGallery(
+  remaining: number,
+): Promise<PickedPhoto[]> {
   if (remaining <= 0) {
     return [];
   }

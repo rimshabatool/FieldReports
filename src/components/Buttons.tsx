@@ -44,13 +44,21 @@ export function SecondaryButton({ label, onPress, disabled }: ButtonProps) {
   );
 }
 
-export function TextButton({ label, onPress }: ButtonProps) {
+export function TextButton({ label, onPress, disabled }: ButtonProps) {
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityState={{ disabled: !!disabled }}
+      disabled={disabled}
       onPress={onPress}
-      style={({ pressed }) => [styles.textHit, pressed && styles.pressed]}>
-      <Text style={styles.textLabel}>{label}</Text>
+      style={({ pressed }) => [
+        styles.textHit,
+        pressed && !disabled && styles.pressed,
+        disabled && styles.disabled,
+      ]}>
+      <Text style={[styles.textLabel, disabled && styles.disabledLabel]}>
+        {label}
+      </Text>
     </Pressable>
   );
 }
